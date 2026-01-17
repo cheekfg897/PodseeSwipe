@@ -88,16 +88,30 @@ export function filterPlacesByRadius(places: Place[], radius: number): Place[] {
 }
 
 // Function to open Google Maps with directions
-export function openGoogleMaps(place: Place) {
+export function openGoogleMaps(place: Place, origin?: string) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const trimmedOrigin = origin?.trim();
+  const hasPlaceId = place.id && !/^\d+$/.test(place.id);
+  const params = new URLSearchParams({
+    api: '1',
+    destination: `${place.latitude},${place.longitude}`,
+  });
+
+  if (trimmedOrigin) {
+    params.set('origin', trimmedOrigin);
+  }
+
+  if (hasPlaceId) {
+    params.set('destination_place_id', place.id);
+  }
   
   if (isMobile) {
     // Try to open native Google Maps app first
-    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}&destination_place_id=${place.id}`;
+    const mapsUrl = `https://www.google.com/maps/dir/?${params.toString()}`;
     window.location.href = mapsUrl;
   } else {
     // Open in new tab for desktop
-    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
+    const mapsUrl = `https://www.google.com/maps/dir/?${params.toString()}`;
     window.open(mapsUrl, '_blank');
   }
 }

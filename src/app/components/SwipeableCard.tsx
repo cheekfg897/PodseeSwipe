@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { motion, PanInfo, useMotionValue, useTransform } from 'motion/react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { PlaceCard } from './PlaceCard';
 import { Place } from '@/types/place';
 
@@ -50,25 +51,37 @@ export function SwipeableCard({ place, onSwipeLeft, onSwipeRight, isTop }: Swipe
       
       {/* Overlay indicators */}
       <motion.div
-        className="absolute inset-0 flex items-center justify-start pl-12 pointer-events-none"
+        className="absolute left-4 top-1/2 -translate-y-1/2"
         style={{
           opacity: useTransform(x, [-200, -50, 0], [1, 0.5, 0]),
         }}
       >
-        <div className="bg-red-500 text-white px-6 py-3 rounded-full text-2xl font-bold rotate-12 border-4 border-white">
-          SKIP
-        </div>
+        <button
+          type="button"
+          onClick={onSwipeLeft}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="inline-flex items-center gap-2 bg-red-500 text-white px-5 py-3 rounded-full text-lg font-bold rotate-12 border-4 border-white shadow-lg hover:bg-red-600"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Skip
+        </button>
       </motion.div>
       
       <motion.div
-        className="absolute inset-0 flex items-center justify-end pr-12 pointer-events-none"
+        className="absolute right-4 top-1/2 -translate-y-1/2"
         style={{
           opacity: useTransform(x, [0, 50, 200], [0, 0.5, 1]),
         }}
       >
-        <div className="bg-green-500 text-white px-6 py-3 rounded-full text-2xl font-bold -rotate-12 border-4 border-white">
-          GO!
-        </div>
+        <button
+          type="button"
+          onClick={() => onSwipeRight(place)}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="inline-flex items-center gap-2 bg-green-500 text-white px-5 py-3 rounded-full text-lg font-bold -rotate-12 border-4 border-white shadow-lg hover:bg-green-600"
+        >
+          Navigate
+          <ArrowRight className="w-5 h-5" />
+        </button>
       </motion.div>
     </motion.div>
   );

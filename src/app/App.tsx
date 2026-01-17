@@ -3,9 +3,9 @@ import { SwipeableCard } from './components/SwipeableCard';
 import { LocationHeader } from './components/LocationHeader';
 import { LandingPage } from './components/LandingPage';
 import { Place } from '@/types/place';
-import { mockPlaces, filterPlacesByRadius, openGoogleMaps } from '@/utils/mockData';
+import { openGoogleMaps } from '@/utils/mockData';
 import { fetchNearbyPlaces, geocodeAddress } from '@/services/api';
-import { RotateCcw, AlertCircle, Loader2, Home } from 'lucide-react';
+import { RotateCcw, AlertCircle, Loader2, Home, Undo2 } from 'lucide-react';
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
@@ -17,7 +17,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [tuitionLocation, setTuitionLocation] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [useMockData, setUseMockData] = useState(true); // Toggle for demo
 
   // Handle starting from landing page
   const handleStart = async (categories: string[], location: string) => {
@@ -44,20 +43,15 @@ export default function App() {
 
       if (response.success && response.places.length > 0) {
         setPlaces(response.places);
-        setUseMockData(false);
       } else {
-        // Fallback to mock data
-        console.log('Using mock data:', response.error || 'No places found');
-        const filteredMockPlaces = filterPlacesByRadius(mockPlaces, radiusKm);
-        setPlaces(filteredMockPlaces);
-        setUseMockData(true);
+        console.log('No places found:', response.error || 'No places found');
+        setPlaces([]);
+        setError(response.error || 'No places found for that location.');
       }
     } catch (err) {
       console.error('Error fetching places:', err);
-      // Fallback to mock data
-      const filteredMockPlaces = filterPlacesByRadius(mockPlaces, radiusKm);
-      setPlaces(filteredMockPlaces);
-      setUseMockData(true);
+      setPlaces([]);
+      setError('Failed to fetch places. Check your network or API key.');
     } finally {
       setIsLoading(false);
       setCurrentIndex(0);
@@ -87,7 +81,7 @@ export default function App() {
     
     // Open Google Maps after a short delay
     setTimeout(() => {
-      openGoogleMaps(place);
+      openGoogleMaps(place, tuitionLocation);
       setCurrentIndex((prev) => prev + 1);
       setIsAnimating(false);
     }, 300);
@@ -95,6 +89,11 @@ export default function App() {
 
   const handleReset = () => {
     setCurrentIndex(0);
+  };
+
+  const handleUndo = () => {
+    if (isAnimating) return;
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev));
   };
 
   const handleBackToHome = () => {
@@ -124,6 +123,18 @@ export default function App() {
 
       {/* Main Card Area */}
       <div className="flex-1 flex items-center justify-center p-4 relative">
+        {!isLoading && hasMorePlaces && (
+          <div className="absolute top-4 right-4 z-20">
+            <button
+              onClick={handleUndo}
+              disabled={currentIndex === 0}
+              className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm backdrop-blur hover:bg-white disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-white/60 disabled:text-gray-400"
+            >
+              <Undo2 className="w-4 h-4" />
+              Undo
+            </button>
+          </div>
+        )}
         {isLoading ? (
           <div className="text-center">
             <Loader2 className="w-16 h-16 text-blue-600 mx-auto mb-4 animate-spin" />
@@ -204,22 +215,16 @@ export default function App() {
         <p className="text-xs text-gray-500 mt-1">
           ← Swipe left to skip | Swipe right to navigate →
         </p>
-        <button
-          onClick={handleBackToHome}
-          className="text-xs text-blue-600 hover:text-blue-700 mt-2 underline"
-        >
-          Back to Home
-        </button>
+        <div className="flex items-center justify-center gap-4 mt-2">
+          <button
+            onClick={handleBackToHome}
+            className="text-xs text-blue-600 hover:text-blue-700 underline"
+          >
+            Back to Home
+          </button>
+        </div>
       </div>
 
-      {/* API Status Notice */}
-      {useMockData && (
-        <div className="bg-yellow-50 border-t border-yellow-200 p-3">
-          <p className="text-xs text-yellow-800 text-center">
-            <strong>Demo Mode:</strong> Using mock data. Connect backend to use real Google Maps data.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

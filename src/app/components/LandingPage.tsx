@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Coffee, ShoppingBag, Utensils, Building2, TreePine, Book, Heart, Dumbbell, ArrowRight } from 'lucide-react';
+import { MapPin, Coffee, Utensils, ArrowRight, Sparkles, ShoppingBag, Landmark } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -11,51 +11,33 @@ interface Category {
 const categories: Category[] = [
   {
     id: 'food',
-    name: 'Restaurants & Food',
+    name: 'Restaurants & Cafes',
     icon: <Utensils className="w-6 h-6" />,
-    types: ['restaurant', 'food']
+    types: ['restaurant', 'cafe', 'bakery', 'meal_takeaway', 'meal_delivery']
   },
   {
-    id: 'cafe',
-    name: 'Cafes & Coffee',
+    id: 'budget',
+    name: 'Hawker & Coffee',
     icon: <Coffee className="w-6 h-6" />,
-    types: ['cafe', 'bakery']
+    types: ['food_court', 'meal_takeaway', 'cafe']
+  },
+  {
+    id: 'self-care',
+    name: 'Self Care & Wellness',
+    icon: <Sparkles className="w-6 h-6" />,
+    types: ['spa', 'beauty_salon', 'hair_care', 'physiotherapist']
   },
   {
     id: 'shopping',
-    name: 'Shopping & Malls',
+    name: 'Shopping',
     icon: <ShoppingBag className="w-6 h-6" />,
-    types: ['shopping_mall', 'store', 'supermarket']
+    types: ['shopping_mall', 'department_store', 'clothing_store', 'store', 'supermarket']
   },
   {
-    id: 'banking',
+    id: 'banks',
     name: 'Banks & ATMs',
-    icon: <Building2 className="w-6 h-6" />,
+    icon: <Landmark className="w-6 h-6" />,
     types: ['bank', 'atm']
-  },
-  {
-    id: 'parks',
-    name: 'Parks & Recreation',
-    icon: <TreePine className="w-6 h-6" />,
-    types: ['park']
-  },
-  {
-    id: 'library',
-    name: 'Libraries',
-    icon: <Book className="w-6 h-6" />,
-    types: ['library']
-  },
-  {
-    id: 'health',
-    name: 'Pharmacy & Health',
-    icon: <Heart className="w-6 h-6" />,
-    types: ['pharmacy', 'drugstore', 'health']
-  },
-  {
-    id: 'gym',
-    name: 'Gyms & Fitness',
-    icon: <Dumbbell className="w-6 h-6" />,
-    types: ['gym']
   }
 ];
 
@@ -64,15 +46,13 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onStart }: LandingPageProps) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['food', 'cafe']);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['food']);
   const [tuitionLocation, setTuitionLocation] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const toggleCategory = (categoryId: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
+    setSelectedCategories([categoryId]);
   };
 
   const handleStart = () => {
@@ -85,6 +65,31 @@ export function LandingPage({ onStart }: LandingPageProps) {
       return;
     }
     onStart(selectedCategories, tuitionLocation);
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported on this device.');
+      return;
+    }
+    setIsLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setTuitionLocation(`${latitude},${longitude}`);
+        setIsLocating(false);
+      },
+      (error) => {
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? 'Location permission was denied.'
+            : 'Unable to fetch current location.';
+        setLocationError(message);
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
   };
 
   return (
@@ -147,9 +152,22 @@ export function LandingPage({ onStart }: LandingPageProps) {
             onChange={(e) => setTuitionLocation(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
           />
-          <p className="text-sm text-gray-500 mt-2">
-            Enter the address of the tuition center or use your current location
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 mt-3">
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              disabled={isLocating}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-blue-600 text-blue-700 font-semibold hover:bg-blue-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isLocating ? 'Locating...' : 'Use current location'}
+            </button>
+            <p className="text-sm text-gray-500 mt-2 sm:mt-0">
+              Enter the address of the tuition center or use your current location
+            </p>
+          </div>
+          {locationError && (
+            <p className="text-sm text-red-600 mt-2">{locationError}</p>
+          )}
         </div>
 
         {/* Category Selection */}
@@ -158,7 +176,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
             What are you looking for?
           </h2>
           <p className="text-sm text-gray-600 mb-4">
-            Select one or more categories (you can choose multiple)
+            Select one category
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {categories.map((category) => (

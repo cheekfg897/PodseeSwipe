@@ -26,16 +26,21 @@ app.use(express.json());
 // Google Maps API Key from environment variable
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
+// Singapore bounding box (approx) to enforce country-only results
+const SINGAPORE_BOUNDS = {
+  minLat: 1.1304753,
+  maxLat: 1.4504753,
+  minLng: 103.6920359,
+  maxLng: 104.0120359
+};
+
 // Category mapping to Google Places API types
 const CATEGORY_TYPE_MAP = {
-  food: ['restaurant', 'meal_takeaway', 'meal_delivery'],
-  cafe: ['cafe', 'bakery'],
-  shopping: ['shopping_mall', 'store', 'supermarket', 'clothing_store'],
-  banking: ['bank', 'atm', 'finance'],
-  parks: ['park'],
-  library: ['library'],
-  health: ['pharmacy', 'drugstore', 'hospital', 'doctor'],
-  gym: ['gym', 'spa']
+  food: ['restaurant', 'cafe', 'bakery', 'meal_takeaway', 'meal_delivery'],
+  budget: ['food_court', 'meal_takeaway', 'cafe'],
+  'self-care': ['spa', 'beauty_salon', 'hair_care', 'physiotherapist'],
+  shopping: ['shopping_mall', 'department_store', 'clothing_store', 'store', 'supermarket'],
+  banks: ['bank', 'atm']
 };
 
 /**
@@ -82,12 +87,20 @@ app.post('/api/geocode', async (req, res) => {
     const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
       params: {
         address: address,
+        components: 'country:SG',
+        region: 'sg',
         key: GOOGLE_MAPS_API_KEY
       }
     });
 
     if (response.data.status === 'OK' && response.data.results.length > 0) {
       const location = response.data.results[0].geometry.location;
+      if (!isWithinSingapore(location.lat, location.lng)) {
+        return res.json({
+          success: false,
+          error: 'Location must be within Singapore'
+        });
+      }
       
       // Cache the result
       cache.set(cacheKey, location);
@@ -148,12 +161,21 @@ app.post('/api/nearby-places', async (req, res) => {
       const geocodeResponse = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
         params: {
           address: location,
+          components: 'country:SG',
+          region: 'sg',
           key: GOOGLE_MAPS_API_KEY
         }
       });
 
       if (geocodeResponse.data.status === 'OK' && geocodeResponse.data.results.length > 0) {
         const loc = geocodeResponse.data.results[0].geometry.location;
+        if (!isWithinSingapore(loc.lat, loc.lng)) {
+          return res.json({
+            success: false,
+            error: 'Location must be within Singapore',
+            places: []
+          });
+        }
         latLng = `${loc.lat},${loc.lng}`;
       } else {
         return res.json({ 
@@ -198,6 +220,13 @@ app.post('/api/nearby-places', async (req, res) => {
 
     // Transform to our Place format
     const [centerLat, centerLng] = latLng.split(',').map(Number);
+    if (!isWithinSingapore(centerLat, centerLng)) {
+      return res.json({
+        success: false,
+        error: 'Location must be within Singapore',
+        places: []
+      });
+    }
     const transformedPlaces = uniquePlaces.slice(0, 50).map(place => {
       // Calculate distance
       const distance = calculateDistance(
@@ -262,6 +291,15 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 function toRad(degrees) {
   return degrees * (Math.PI / 180);
+}
+
+function isWithinSingapore(lat, lng) {
+  return (
+    lat >= SINGAPORE_BOUNDS.minLat &&
+    lat <= SINGAPORE_BOUNDS.maxLat &&
+    lng >= SINGAPORE_BOUNDS.minLng &&
+    lng <= SINGAPORE_BOUNDS.maxLng
+  );
 }
 
 // Start server
