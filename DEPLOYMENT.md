@@ -34,6 +34,12 @@ Before deploying, ensure:
 **Cost:** Variable, can be optimized  
 **Time:** 1-2 hours
 
+### Option D: GitHub Pages (Frontend-only)
+**Best for:** Fast static hosting, demos  
+**Cost:** Free  
+**Time:** 10 minutes  
+**Note:** Uses a frontend Google Maps key (no backend)
+
 ---
 
 ## ⚡ Option A: Quick Deploy (Recommended)
@@ -268,6 +274,38 @@ aws s3 sync dist/ s3://parents-wait-time-guide --acl public-read
 - Enable HTTPS
 
 ---
+
+## Option D: GitHub Pages (Frontend-only)
+
+**1. Create a restricted frontend key (Google Cloud Console)**
+- Application restrictions: **HTTP referrers (web sites)**
+  - `https://YOURUSERNAME.github.io/*`
+  - (Optional custom domain) `https://yourdomain.com/*`
+- API restrictions: **Restrict key**
+  - Places API
+  - (Optional) Maps JavaScript API
+  - (Optional) Geocoding API
+- Set quotas and billing budget alerts
+
+**2. Add the frontend key for build**
+Set `VITE_GOOGLE_MAPS_API_KEY` at build time (this is embedded into the static JS bundle).
+
+Local dev:
+```
+# .env.local
+VITE_GOOGLE_MAPS_API_KEY=AIzaSyDxxxxxxxxxx
+```
+
+GitHub Actions (example):
+```
+VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+```
+
+**3. Build and deploy to GitHub Pages**
+```
+npm run build
+```
+Upload the `dist` folder to the `gh-pages` branch (or use GitHub Actions to deploy).
 
 ## 🔒 Security Configuration
 
@@ -551,6 +589,11 @@ jobs:
 ### Frontend (.env.local or Vercel/Netlify)
 ```
 VITE_API_URL=https://your-backend.com/api
+```
+
+### Frontend (GitHub Pages / frontend-only)
+```
+VITE_GOOGLE_MAPS_API_KEY=AIzaSyDxxxxxxxxxx
 ```
 
 ### Backend (.env or Railway/DigitalOcean)

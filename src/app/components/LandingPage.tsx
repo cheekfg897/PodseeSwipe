@@ -83,8 +83,12 @@ export function LandingPage({ onStart }: LandingPageProps) {
       (error) => {
         const message =
           error.code === error.PERMISSION_DENIED
-            ? 'Location permission was denied.'
-            : 'Unable to fetch current location.';
+            ? 'Location permission was denied. Please enable location access in your browser settings and try again.'
+            : error.code === error.POSITION_UNAVAILABLE
+              ? 'Location is unavailable. Check your network/GPS and try again.'
+              : error.code === error.TIMEOUT
+                ? 'Location request timed out. Please try again.'
+                : 'Unable to fetch current location.';
         setLocationError(message);
         setIsLocating(false);
       },
@@ -166,7 +170,12 @@ export function LandingPage({ onStart }: LandingPageProps) {
             </p>
           </div>
           {locationError && (
-            <p className="text-sm text-red-600 mt-2">{locationError}</p>
+            <div className="mt-2 text-sm text-red-600">
+              {locationError}
+              <div className="text-xs text-gray-500 mt-1">
+                Tip: Location access only works on HTTPS and not in in-app browsers.
+              </div>
+            </div>
           )}
         </div>
 
