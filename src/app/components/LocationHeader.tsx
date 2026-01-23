@@ -1,4 +1,5 @@
-import { MapPin, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import podseeLogo from '@/assets/podee_logo_bg_removed.png';
 
 interface LocationHeaderProps {
   tuitionCenter: string;
@@ -15,8 +16,8 @@ export function LocationHeader({ tuitionCenter, radius, onRadiusChange }: Locati
   return (
     <div className="bg-white shadow-md p-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-blue-600" />
+        <div className="flex items-center gap-3">
+          <img src={podseeLogo} alt="Podsee" className="h-12 w-auto" />
           <div>
             <p className="text-xs text-gray-500">Near</p>
             <p className="font-semibold text-sm">{displayLocation}</p>

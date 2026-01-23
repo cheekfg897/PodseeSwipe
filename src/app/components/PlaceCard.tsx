@@ -1,4 +1,5 @@
-import { MapPin, Star, Clock, Navigation } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { MapPin, Star, Clock, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Place } from '@/types/place';
 
 interface PlaceCardProps {
@@ -6,6 +7,28 @@ interface PlaceCardProps {
 }
 
 export function PlaceCard({ place }: PlaceCardProps) {
+  const reviews = place.reviews ?? [];
+  const [reviewIndex, setReviewIndex] = useState(0);
+
+  useEffect(() => {
+    setReviewIndex(0);
+  }, [place.id]);
+
+  useEffect(() => {
+    if (reviews.length <= 1) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setReviewIndex((prev) => (prev + 1) % reviews.length);
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [place.id, reviews.length]);
+
+  const currentReview = reviews[reviewIndex];
+  const priceLabel = formatPriceLevel(place.priceLevel);
+
   return (
     <div className="h-full w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col">
       {/* Image */}
@@ -36,9 +59,61 @@ export function PlaceCard({ place }: PlaceCardProps) {
             <Clock className="w-5 h-5 text-green-600" />
             <span className="text-sm">{place.openingHours}</span>
           </div>
+
+          <div className="flex items-center gap-2 text-gray-700">
+            <DollarSign className="w-5 h-5 text-amber-600" />
+            <span className="text-sm">Price: {priceLabel}</span>
+          </div>
         </div>
 
         <p className="text-gray-600 text-sm flex-1">{place.description}</p>
+
+        <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-gray-700">Reviews</span>
+            {reviews.length > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReviewIndex((prev) => (prev - 1 + reviews.length) % reviews.length)
+                  }
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-700"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewIndex((prev) => (prev + 1) % reviews.length)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-700"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+          {currentReview ? (
+            <>
+              <p className="text-sm text-gray-700 min-h-[72px]">
+                "{currentReview.text || 'No review text available.'}"
+              </p>
+              <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                <span>— {currentReview.authorName}</span>
+                <span className="inline-flex items-center gap-1">
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                  {currentReview.rating}
+                </span>
+              </div>
+              {currentReview.relativeTimeDescription ? (
+                <div className="mt-1 text-[11px] text-gray-400">
+                  {currentReview.relativeTimeDescription}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-gray-500">No reviews available yet.</p>
+          )}
+        </div>
 
         {/* Swipe Instructions */}
         <div className="mt-6 pt-6 border-t border-gray-200">
@@ -56,4 +131,14 @@ export function PlaceCard({ place }: PlaceCardProps) {
       </div>
     </div>
   );
+}
+
+function formatPriceLevel(priceLevel?: number | null): string {
+  if (priceLevel === null || priceLevel === undefined) {
+    return 'Unknown';
+  }
+
+  const safeLevel = Math.max(0, Math.min(4, priceLevel));
+  const dollars = '$'.repeat(Math.max(1, safeLevel));
+  return dollars;
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MapPin, Coffee, Utensils, ArrowRight, Sparkles, ShoppingBag, Landmark } from 'lucide-react';
+import { Coffee, Utensils, ArrowRight, Sparkles, ShoppingBag, Landmark } from 'lucide-react';
+import podseeLogo from '@/assets/podee_logo_bg_removed.png';
 
 interface Category {
   id: string;
@@ -101,8 +102,12 @@ export function LandingPage({ onStart }: LandingPageProps) {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <MapPin className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center bg-white/90 rounded-3xl px-8 py-6 shadow-md mb-4">
+            <img
+              src={podseeLogo}
+              alt="Podsee"
+              className="h-28 w-auto"
+            />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Parents' Wait Time Guide

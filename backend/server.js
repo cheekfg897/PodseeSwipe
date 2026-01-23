@@ -227,7 +227,7 @@ app.post('/api/nearby-places', async (req, res) => {
         places: []
       });
     }
-    const transformedPlaces = uniquePlaces.slice(0, 50).map(place => {
+    const transformedPlaces = await Promise.all(uniquePlaces.slice(0, 50).map(async place => {
       // Calculate distance
       const distance = calculateDistance(
         centerLat,
@@ -236,11 +236,15 @@ app.post('/api/nearby-places', async (req, res) => {
         place.geometry.location.lng
       );
 
+      const details = await fetchPlaceDetails(place.place_id);
+
       return {
         id: place.place_id,
         name: place.name,
         category: place.types[0]?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Place',
         rating: place.rating || 0,
+        priceLevel: details?.priceLevel ?? null,
+        reviews: details?.reviews ?? [],
         distance: parseFloat(distance.toFixed(1)),
         openingHours: place.opening_hours?.open_now ? 'Open now' : 'Closed',
         description: place.vicinity || 'No description available',
@@ -251,7 +255,7 @@ app.post('/api/nearby-places', async (req, res) => {
         longitude: place.geometry.location.lng,
         address: place.vicinity || ''
       };
-    });
+    }));
 
     // Sort by distance
     transformedPlaces.sort((a, b) => a.distance - b.distance);
@@ -300,6 +304,51 @@ function isWithinSingapore(lat, lng) {
     lng >= SINGAPORE_BOUNDS.minLng &&
     lng <= SINGAPORE_BOUNDS.maxLng
   );
+}
+
+async function fetchPlaceDetails(placeId) {
+  if (!placeId) {
+    return null;
+  }
+
+  const cacheKey = `details:${placeId}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const response = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
+      params: {
+        place_id: placeId,
+        fields: 'price_level,reviews',
+        key: GOOGLE_MAPS_API_KEY
+      }
+    });
+
+    if (response.data.status !== 'OK') {
+      return null;
+    }
+
+    const result = response.data.result || {};
+    const details = {
+      priceLevel: typeof result.price_level === 'number' ? result.price_level : null,
+      reviews: Array.isArray(result.reviews)
+        ? result.reviews.slice(0, 5).map(review => ({
+            authorName: review.author_name || 'Anonymous',
+            rating: review.rating || 0,
+            text: review.text || '',
+            relativeTimeDescription: review.relative_time_description || ''
+          }))
+        : []
+    };
+
+    cache.set(cacheKey, details);
+    return details;
+  } catch (error) {
+    console.error('Error fetching place details:', error.message);
+    return null;
+  }
 }
 
 // Start server

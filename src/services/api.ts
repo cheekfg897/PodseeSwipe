@@ -1,4 +1,4 @@
-import { Place } from '@/types/place';
+import { Place, PlaceReview } from '@/types/place';
 
 const DEFAULT_BACKEND_URL = 'http://localhost:3001/api';
 const API_BASE_URL =
@@ -254,13 +254,15 @@ async function fetchNearbyPlacesFromGoogle(
       new Map(allPlaces.map((place) => [place.place_id, place])).values()
     ).filter((place) => !place.types?.includes('lodging'));
 
-    const transformedPlaces: Place[] = uniquePlaces.slice(0, 50).map((place) => {
+    const transformedPlaces: Place[] = await Promise.all(uniquePlaces.slice(0, 50).map(async (place) => {
       const distance = calculateDistance(
         centerLat,
         centerLng,
         place.geometry?.location?.lat?.() ?? centerLat,
         place.geometry?.location?.lng?.() ?? centerLng
       );
+
+      const details = await fetchPlaceDetailsFromGoogle(google, service, place.place_id || place.id);
 
       return {
         id: place.place_id || place.id || `${place.name}-${distance}`,
@@ -269,6 +271,8 @@ async function fetchNearbyPlacesFromGoogle(
           place.types?.[0]?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) ||
           'Place',
         rating: place.rating || 0,
+        priceLevel: details.priceLevel,
+        reviews: details.reviews,
         distance: parseFloat(distance.toFixed(1)),
         openingHours: place.opening_hours?.open_now ? 'Open now' : 'Closed',
         description: place.vicinity || place.formatted_address || 'No description available',
@@ -278,7 +282,7 @@ async function fetchNearbyPlacesFromGoogle(
         longitude: place.geometry?.location?.lng?.() ?? centerLng,
         address: place.vicinity || place.formatted_address || '',
       };
-    });
+    }));
 
     transformedPlaces.sort((a, b) => a.distance - b.distance);
 
@@ -291,4 +295,40 @@ async function fetchNearbyPlacesFromGoogle(
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
+}
+
+async function fetchPlaceDetailsFromGoogle(
+  google: typeof window.google,
+  service: google.maps.places.PlacesService,
+  placeId?: string
+): Promise<{ priceLevel: number | null; reviews: PlaceReview[] }> {
+  if (!placeId) {
+    return { priceLevel: null, reviews: [] };
+  }
+
+  return new Promise((resolve) => {
+    service.getDetails(
+      { placeId, fields: ['price_level', 'reviews'] },
+      (result, status) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK || !result) {
+          resolve({ priceLevel: null, reviews: [] });
+          return;
+        }
+
+        const reviews = Array.isArray(result.reviews)
+          ? result.reviews.slice(0, 5).map((review) => ({
+              authorName: review.author_name || 'Anonymous',
+              rating: review.rating || 0,
+              text: review.text || '',
+              relativeTimeDescription: review.relative_time_description || '',
+            }))
+          : [];
+
+        resolve({
+          priceLevel: typeof result.price_level === 'number' ? result.price_level : null,
+          reviews,
+        });
+      }
+    );
+  });
 }
