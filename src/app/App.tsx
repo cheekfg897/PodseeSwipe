@@ -16,20 +16,27 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tuitionLocation, setTuitionLocation] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   // Handle starting from landing page
-  const handleStart = async (categories: string[], location: string) => {
+  const handleStart = async (categories: string[], location: string, term: string) => {
     setSelectedCategories(categories);
     setTuitionLocation(location);
+    setSearchTerm(term);
     setShowLanding(false);
     
     // Try to fetch real data
-    await fetchPlaces(location, radius, categories);
+    await fetchPlaces(location, radius, categories, term);
   };
 
   // Fetch places from backend or use mock data
-  const fetchPlaces = async (location: string, radiusKm: number, categories: string[]) => {
+  const fetchPlaces = async (
+    location: string,
+    radiusKm: number,
+    categories: string[],
+    term: string
+  ) => {
     setIsLoading(true);
     setError(null);
 
@@ -39,6 +46,7 @@ export default function App() {
         location,
         radius: radiusKm,
         categories,
+        searchTerm: term,
       });
 
       if (response.success && response.places.length > 0) {
@@ -61,7 +69,7 @@ export default function App() {
   // Refetch when radius changes
   useEffect(() => {
     if (!showLanding && tuitionLocation) {
-      fetchPlaces(tuitionLocation, radius, selectedCategories);
+      fetchPlaces(tuitionLocation, radius, selectedCategories, searchTerm);
     }
   }, [radius]);
 

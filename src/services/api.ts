@@ -1,8 +1,6 @@
 import { Place, PlaceReview } from '@/types/place';
 
-const DEFAULT_BACKEND_URL = 'http://localhost:3001/api';
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? DEFAULT_BACKEND_URL : '');
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 const FRONTEND_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const USE_BACKEND = API_BASE_URL.length > 0;
 
@@ -40,7 +38,7 @@ function loadGoogleMaps(): Promise<typeof window.google> {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${FRONTEND_API_KEY}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${FRONTEND_API_KEY}&libraries=places&loading=async`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
@@ -90,6 +88,7 @@ interface NearbyPlacesParams {
   location: string; // Address or "lat,lng"
   radius: number; // in km
   categories: string[]; // category IDs
+  searchTerm?: string; // optional keyword
 }
 
 interface NearbyPlacesResponse {
@@ -222,6 +221,7 @@ async function fetchNearbyPlacesFromGoogle(
     const uniqueTypes = [...new Set(types)];
     const radiusMeters = params.radius * 1000;
     const service = new google.maps.places.PlacesService(document.createElement('div'));
+    const keyword = params.searchTerm?.trim();
 
     const resultsByType = await Promise.all(
       uniqueTypes.map(
@@ -232,6 +232,7 @@ async function fetchNearbyPlacesFromGoogle(
                 location: new google.maps.LatLng(centerLat, centerLng),
                 radius: radiusMeters,
                 type,
+                ...(keyword ? { keyword } : {}),
               },
               (results, status) => {
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
@@ -253,8 +254,13 @@ async function fetchNearbyPlacesFromGoogle(
     const uniquePlaces = Array.from(
       new Map(allPlaces.map((place) => [place.place_id, place])).values()
     ).filter((place) => !place.types?.includes('lodging'));
+    const allowedTypes = new Set(uniqueTypes);
+    const categoryFilteredPlaces = uniquePlaces.filter((place) =>
+      place.types?.some((type) => allowedTypes.has(type))
+    );
 
-    const transformedPlaces: Place[] = await Promise.all(uniquePlaces.slice(0, 50).map(async (place) => {
+    const transformedPlaces: Place[] = await Promise.all(categoryFilteredPlaces.slice(0, 50).map(async (place) => {
+      const matchedType = place.types?.find((type) => allowedTypes.has(type));
       const distance = calculateDistance(
         centerLat,
         centerLng,
@@ -264,19 +270,31 @@ async function fetchNearbyPlacesFromGoogle(
 
       const details = await fetchPlaceDetailsFromGoogle(google, service, place.place_id || place.id);
 
+      const imageUrls = place.photos?.length
+        ? place.photos
+            .slice(0, 5)
+            .map((photo) => photo.getUrl({ maxWidth: 800 }))
+        : details.photoUrls;
+
       return {
         id: place.place_id || place.id || `${place.name}-${distance}`,
         name: place.name || 'Place',
-        category:
-          place.types?.[0]?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) ||
-          'Place',
+        category: matchedType
+          ? matchedType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+          : 'Place',
         rating: place.rating || 0,
         priceLevel: details.priceLevel,
         reviews: details.reviews,
+        imageUrls,
         distance: parseFloat(distance.toFixed(1)),
-        openingHours: place.opening_hours?.open_now ? 'Open now' : 'Closed',
+        openingHours:
+          details.isOpenNow === true
+            ? 'Open now'
+            : details.isOpenNow === false
+              ? 'Closed'
+              : 'Hours unavailable',
         description: place.vicinity || place.formatted_address || 'No description available',
-        imageUrl: place.photos?.[0]?.getUrl({ maxWidth: 800 }) ||
+        imageUrl: imageUrls[0] ||
           'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
         latitude: place.geometry?.location?.lat?.() ?? centerLat,
         longitude: place.geometry?.location?.lng?.() ?? centerLng,
@@ -301,17 +319,22 @@ async function fetchPlaceDetailsFromGoogle(
   google: typeof window.google,
   service: google.maps.places.PlacesService,
   placeId?: string
-): Promise<{ priceLevel: number | null; reviews: PlaceReview[] }> {
+): Promise<{
+  priceLevel: number | null;
+  reviews: PlaceReview[];
+  photoUrls: string[];
+  isOpenNow: boolean | null;
+}> {
   if (!placeId) {
-    return { priceLevel: null, reviews: [] };
+    return { priceLevel: null, reviews: [], photoUrls: [], isOpenNow: null };
   }
 
   return new Promise((resolve) => {
     service.getDetails(
-      { placeId, fields: ['price_level', 'reviews'] },
+      { placeId, fields: ['price_level', 'reviews', 'photos', 'opening_hours'] },
       (result, status) => {
         if (status !== google.maps.places.PlacesServiceStatus.OK || !result) {
-          resolve({ priceLevel: null, reviews: [] });
+          resolve({ priceLevel: null, reviews: [], photoUrls: [], isOpenNow: null });
           return;
         }
 
@@ -324,9 +347,20 @@ async function fetchPlaceDetailsFromGoogle(
             }))
           : [];
 
+        const photoUrls = Array.isArray(result.photos)
+          ? result.photos.slice(0, 5).map((photo) => photo.getUrl({ maxWidth: 800 }))
+          : [];
+
+        const isOpenNow =
+          typeof result.opening_hours?.open_now === 'boolean'
+            ? result.opening_hours.open_now
+            : null;
+
         resolve({
           priceLevel: typeof result.price_level === 'number' ? result.price_level : null,
           reviews,
+          photoUrls,
+          isOpenNow,
         });
       }
     );

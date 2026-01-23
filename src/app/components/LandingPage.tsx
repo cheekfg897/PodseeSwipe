@@ -43,12 +43,17 @@ const categories: Category[] = [
 ];
 
 interface LandingPageProps {
-  onStart: (selectedCategories: string[], tuitionLocation: string) => void;
+  onStart: (
+    selectedCategories: string[],
+    tuitionLocation: string,
+    searchTerm: string
+  ) => void;
 }
 
 export function LandingPage({ onStart }: LandingPageProps) {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['food']);
   const [tuitionLocation, setTuitionLocation] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
@@ -65,7 +70,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       alert('Please enter the tuition center location');
       return;
     }
-    onStart(selectedCategories, tuitionLocation);
+    onStart(selectedCategories, tuitionLocation, searchTerm.trim());
   };
 
   const handleUseCurrentLocation = () => {
@@ -102,15 +107,15 @@ export function LandingPage({ onStart }: LandingPageProps) {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center bg-white/90 rounded-3xl px-8 py-6 shadow-md mb-4">
+          <div className="inline-flex items-center justify-center bg-white/90 rounded-3xl px-10 py-8 shadow-md mb-4">
             <img
               src={podseeLogo}
               alt="Podsee"
-              className="h-28 w-auto"
+              className="h-36 w-auto"
             />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Parents' Wait Time Guide
+            PodseeSwipe Nearby Places for Parents
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Discover nearby places to eat, shop, and relax while your child is in tuition
@@ -223,6 +228,23 @@ export function LandingPage({ onStart }: LandingPageProps) {
           <p className="text-sm text-gray-500 mt-4">
             {selectedCategories.length} categor{selectedCategories.length === 1 ? 'y' : 'ies'} selected
           </p>
+        </div>
+
+        {/* Optional Search */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Want something specific?
+          </h2>
+          <p className="text-sm text-gray-600 mb-3">
+            Optional: add keywords like "western food", "halal", or "pet-friendly".
+          </p>
+          <input
+            type="text"
+            placeholder="e.g., western food"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+          />
         </div>
 
         {/* Start Button */}

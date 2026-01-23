@@ -1,30 +1,28 @@
 import { useEffect, useState } from 'react';
 import { MapPin, Star, Clock, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Place } from '@/types/place';
+import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 
 interface PlaceCardProps {
   place: Place;
 }
 
 export function PlaceCard({ place }: PlaceCardProps) {
+  const fallbackImageUrl = getFallbackImageUrl(place.category);
+  const imageUrls = (place.imageUrls ?? [])
+    .filter((url) => url?.trim())
+    .length > 0
+    ? (place.imageUrls ?? []).filter((url) => url?.trim())
+    : [place.imageUrl].filter((url) => url?.trim());
+  const sanitizedImageUrls = imageUrls.length > 0 ? imageUrls : [fallbackImageUrl];
+  const [imageIndex, setImageIndex] = useState(0);
   const reviews = place.reviews ?? [];
   const [reviewIndex, setReviewIndex] = useState(0);
 
   useEffect(() => {
     setReviewIndex(0);
+    setImageIndex(0);
   }, [place.id]);
-
-  useEffect(() => {
-    if (reviews.length <= 1) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setReviewIndex((prev) => (prev + 1) % reviews.length);
-    }, 6000);
-
-    return () => clearInterval(interval);
-  }, [place.id, reviews.length]);
 
   const currentReview = reviews[reviewIndex];
   const priceLabel = formatPriceLevel(place.priceLevel);
@@ -32,12 +30,38 @@ export function PlaceCard({ place }: PlaceCardProps) {
   return (
     <div className="h-full w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col">
       {/* Image */}
-      <div className="relative h-1/2 overflow-hidden">
-        <img
-          src={place.imageUrl}
+      <div className="relative h-56 shrink-0 overflow-hidden">
+        <ImageWithFallback
+          src={sanitizedImageUrls[imageIndex]}
           alt={place.name}
           className="w-full h-full object-cover"
         />
+        {sanitizedImageUrls.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={() =>
+                setImageIndex((prev) =>
+                  (prev - 1 + sanitizedImageUrls.length) % sanitizedImageUrls.length
+                )
+              }
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/60 p-2 text-gray-700 shadow-sm backdrop-blur hover:bg-white/80"
+              aria-label="Previous photo"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setImageIndex((prev) => (prev + 1) % sanitizedImageUrls.length)
+              }
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/60 p-2 text-gray-700 shadow-sm backdrop-blur hover:bg-white/80"
+              aria-label="Next photo"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </>
+        )}
         <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full flex items-center gap-1">
           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
           <span className="font-semibold text-sm">{place.rating}</span>
@@ -45,7 +69,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-6 flex flex-col">
+      <div className="flex-1 p-6 flex flex-col min-h-0 overflow-y-auto">
         <h2 className="text-2xl font-bold mb-2">{place.name}</h2>
         <p className="text-gray-600 mb-4">{place.category}</p>
 
@@ -141,4 +165,23 @@ function formatPriceLevel(priceLevel?: number | null): string {
   const safeLevel = Math.max(0, Math.min(4, priceLevel));
   const dollars = '$'.repeat(Math.max(1, safeLevel));
   return dollars;
+}
+
+function getFallbackImageUrl(category?: string | null): string {
+  const normalized = (category ?? '').toLowerCase();
+
+  if (normalized.includes('atm') || normalized.includes('bank')) {
+    return 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=800';
+  }
+  if (normalized.includes('shopping') || normalized.includes('store') || normalized.includes('mall')) {
+    return 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800';
+  }
+  if (normalized.includes('spa') || normalized.includes('salon') || normalized.includes('wellness')) {
+    return 'https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=800';
+  }
+  if (normalized.includes('cafe') || normalized.includes('restaurant') || normalized.includes('food')) {
+    return 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800';
+  }
+
+  return 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800';
 }

@@ -5,6 +5,7 @@ export interface Place {
   rating: number;
   priceLevel?: number | null;
   reviews?: PlaceReview[];
+  imageUrls?: string[];
   distance: number;
   openingHours: string;
   description: string;
