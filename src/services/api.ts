@@ -252,7 +252,7 @@ async function fetchNearbyPlacesFromGoogle(
     const allPlaces = resultsByType.flat();
     const uniquePlaces = Array.from(
       new Map(allPlaces.map((place) => [place.place_id, place])).values()
-    );
+    ).filter((place) => !place.types?.includes('lodging'));
 
     const transformedPlaces: Place[] = uniquePlaces.slice(0, 50).map((place) => {
       const distance = calculateDistance(

@@ -3,7 +3,7 @@ import { SwipeableCard } from './components/SwipeableCard';
 import { LocationHeader } from './components/LocationHeader';
 import { LandingPage } from './components/LandingPage';
 import { Place } from '@/types/place';
-import { openGoogleMaps } from '@/utils/mockData';
+import { openGoogleMaps } from '@/utils/googleMaps';
 import { fetchNearbyPlaces, geocodeAddress } from '@/services/api';
 import { RotateCcw, AlertCircle, Loader2, Home, Undo2 } from 'lucide-react';
 

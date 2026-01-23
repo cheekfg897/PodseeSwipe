@@ -216,7 +216,7 @@ app.post('/api/nearby-places', async (req, res) => {
     // Remove duplicates by place_id
     const uniquePlaces = Array.from(
       new Map(allPlaces.map(place => [place.place_id, place])).values()
-    );
+    ).filter(place => !(place.types || []).includes('lodging'));
 
     // Transform to our Place format
     const [centerLat, centerLng] = latLng.split(',').map(Number);
